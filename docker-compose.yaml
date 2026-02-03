@@ -1,0 +1,22 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver-web
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "StrongPass@123"
+      MSSQL_PID: "Web"
+      TZ: "UTC"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "StrongPass@123" -Q "SELECT 1"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  sqlserver_data:
