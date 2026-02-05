@@ -40,10 +40,18 @@
     ALTER TABLE InvoiceLine
     ENABLE CHANGE_TRACKING
     WITH (TRACK_COLUMNS_UPDATED = ON);
-    
+
+# This table stores the last version number we processed
+CREATE TABLE ChangeTrackingSyncState (
+    SyncName                   VARCHAR(100) PRIMARY KEY, 
+    LastSyncVersion             BIGINT NOT NULL,          
+    LastProcessedInvoiceId      INT NULL DEFAULT 0,        
+    LastSyncTime                DATETIME2 NOT NULL DEFAULT SYSDATETIME()  
+);
+   
 
 # Before making changes, capture your starting point:
-    sqlSELECT CHANGE_TRACKING_CURRENT_VERSION() AS current_version;
+    SELECT CHANGE_TRACKING_CURRENT_VERSION() AS current_version;
     
 # INSERT DATA
     INSERT INTO InvoiceHeader (InvoiceNumber, CustomerCode, InvoiceDate, TotalAmount)
@@ -110,7 +118,7 @@ VALUES
 # Some Changes 
     -- Update header
     UPDATE InvoiceHeader
-    SET TotalAmount = 300.00
+    SET TotalAmount = 400.00
     WHERE InvoiceId = 1;
 
     -- Add a new line
@@ -136,7 +144,7 @@ VALUES
     
     ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Get Complete Invoices as JSON
-    DECLARE @last_sync_version BIGINT = 100;  -- Your baseline version
+    DECLARE @last_sync_version BIGINT = 6;  -- Your baseline version
     
     WITH ChangedInvoices AS (
         -- Header changes
