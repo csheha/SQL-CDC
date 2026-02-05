@@ -1,0 +1,97 @@
+
+25000  -- Total invoice headers to insert
+3   -- Lines per invoice
+
+
+
+'Deleting old data...'
+DELETE FROM InvoiceLine;
+DELETE FROM InvoiceHeader;
+
+-- =============================================
+-- Step 1: Insert Invoice Headers (Initial batch)
+-- =============================================
+           
+
+;WITH Numbers AS (
+    SELECT TOP (25000)
+        ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS n
+    FROM sys.objects a
+    CROSS JOIN sys.objects b
+    CROSS JOIN sys.objects c
+)
+INSERT INTO InvoiceHeader (
+    InvoiceNumber,
+    CustomerCode,
+    InvoiceDate,
+    TotalAmount
+)
+SELECT
+    CONCAT('INV-', 300000 + n),
+    CONCAT('CUST-', RIGHT('000000' + CAST(n AS VARCHAR(6)), 6)),
+    DATEADD(DAY, n % 365, '2026-01-01'),
+    0
+FROM Numbers;
+
+            DECLARE @endTime DATETIME = GETDATE();
+            PRINT 'InvoiceHeader insert completed.';
+            SELECT DATEDIFF(MS, @startTime, @endTime) AS ElapsedMilliseconds,
+                CAST(25000 * 1000.0 / DATEDIFF(MS, @startTime, @endTime) AS DECIMAL(10,2)) AS InvoicesPerSecond;
+
+-- =============================================
+-- Step 2: Insert Invoice Lines (Initial batch)
+-- =============================================
+
+
+;WITH LineNumbers AS (
+    SELECT TOP (3)
+        ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS Num
+    FROM sys.objects a
+    CROSS JOIN sys.objects b
+)
+INSERT INTO InvoiceLine (
+    InvoiceId,
+    ItemCode,
+    Qty,
+    UnitPrice
+)
+SELECT
+    h.InvoiceId,
+    CONCAT('ITEM-', RIGHT('000' + CAST(l.Num AS VARCHAR(3)), 3)) AS ItemCode,
+    (ABS(CHECKSUM(NEWID())) % 10) + 1 AS Qty,
+    (ABS(CHECKSUM(NEWID())) % 500) + 50 AS UnitPrice
+FROM InvoiceHeader h
+CROSS JOIN LineNumbers l;
+
+
+
+-- =============================================
+-- Step 3: Updates using 1000 rows
+-- =============================================
+PRINT 'Inserting new invoices (update test)...';
+DECLARE @startTime DATETIME = GETDATE();
+
+;WITH Numbers AS (
+    SELECT TOP (1000)
+        ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS n
+    FROM sys.objects a
+    CROSS JOIN sys.objects b
+)
+INSERT INTO InvoiceHeader (
+    InvoiceNumber,
+    CustomerCode,
+    InvoiceDate,
+    TotalAmount
+)
+SELECT
+    CONCAT('INV-NEW-', 500000 + n),
+    CONCAT('CUST-', RIGHT('000000' + CAST(n AS VARCHAR(6)), 6)),
+    GETDATE(),
+    0
+FROM Numbers;
+
+
+
+TESTING 1000 invoicees retrieval
+
+http://localhost:3000/api/invoices/changes?syncName=TestConsumer&limit=1000
