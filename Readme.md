@@ -195,3 +195,15 @@ VALUES
 SELECT CHANGE_TRACKING_CURRENT_VERSION() AS new_version;
 
 
+# API endpoint documentation
+
+Get changed invoices
+http://localhost:3000/api/invoices/changes?syncName=Test&limit=1000
+
+List saved bson files
+http://localhost:3000/api/files
+
+Read a BSON file 
+http://localhost:3000/api/files/:filename
+
+    ex: http://localhost:3000/api/files/INV-300001_v2_20260206_102946.bson
