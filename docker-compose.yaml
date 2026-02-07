@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "StrongPass@123"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
       MSSQL_PID: "Web"
       TZ: "UTC"
     ports:
@@ -13,10 +13,64 @@ services:
     volumes:
       - sqlserver_data:/var/opt/mssql
     healthcheck:
-      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "StrongPass@123" -Q "SELECT 1"
+      test: /opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1 -U ${MSSQL_USER} -P "${MSSQL_SA_PASSWORD}" -Q "SELECT 1" -C
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 30s 
+    networks:
+      - my_net
+  
+  redis: 
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - my_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5  
+
+  superset:
+    build:
+      context: ./superset
+      dockerfile: Dockerfile
+    container_name: superset_sqlcdc
+    ports:
+      - "8088:8088"
+    depends_on:
+      - db
+      - redis
+    environment:
+      SUPERSET_ENV: production
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
+    volumes:
+      - ./superset:/app/superset_home
+      - ./superset/superset_config.py:/app/pythonpath/superset_config.py
+    networks:
+      - my_net
+
+  db:
+    image: postgres:13
+    container_name: superset_sqlcdc_db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db_data:/var/lib/postgresql/data
+    networks:
+      - my_net
 
 volumes:
-  sqlserver_data:
+    sqlserver_data:
+    superset_home:
+
+networks:
+    my_net:
+      driver: bridge

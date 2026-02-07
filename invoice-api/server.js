@@ -1,4 +1,3 @@
-// Import libraries
 import express from "express";
 import sql from "mssql";
 import { BSON } from "bson";
@@ -88,7 +87,7 @@ app.get("/api/invoices/changes", async (req, res) => {
 
     const pool = await connectDB();
 
-    // 1️⃣ Get last position
+    //1. Get last position
     let stepStart = Date.now();
     const stateResult = await pool.request()
       .input("syncName", sql.VarChar(100), syncName)
@@ -117,20 +116,20 @@ app.get("/api/invoices/changes", async (req, res) => {
       lastInvoiceId = Number(stateResult.recordset[0].LastProcessedInvoiceId || 0);
     }
 
-    console.log(`📍 Position: Version ${sinceVersion}, InvoiceId ${lastInvoiceId} (${formatDuration(timings.readState)})`);
+    console.log(`Position: Version ${sinceVersion}, InvoiceId ${lastInvoiceId} (${formatDuration(timings.readState)})`);
 
-    // 2️⃣ Get current version
+    // 2. Get current version
     stepStart = Date.now();
     const versionResult = await pool.request()
       .query`SELECT CHANGE_TRACKING_CURRENT_VERSION() AS toVersion`;
     const toVersion = versionResult.recordset[0].toVersion;
     timings.getVersion = Date.now() - stepStart;
     
-    console.log(`📊 Current Version: ${toVersion} (${formatDuration(timings.getVersion)})`);
+    console.log(`Current Version: ${toVersion} (${formatDuration(timings.getVersion)})`);
 
-    // 3️⃣ Find changed invoices
+    // 3. Find changed invoices
     stepStart = Date.now();
-    console.log(`🔍 Querying database...`);
+    console.log(`Querying database...`);
     
     // Use sinceVersion - 1 for CHANGETABLE to include records at sinceVersion
     const changeTableVersion = sinceVersion > 0 ? sinceVersion - 1 : 0;
@@ -190,7 +189,7 @@ app.get("/api/invoices/changes", async (req, res) => {
     timings.queryDatabase = Date.now() - stepStart;
     console.log(`✅ Query completed: Found ${result.recordset.length} invoices (${formatDuration(timings.queryDatabase)})`);
 
-    // 4️⃣ Parse JSON data
+    // 4. Parse JSON data
     stepStart = Date.now();
     const data = result.recordset.map(r => ({
       changeVersion: Number(r.ChangeVersion),
@@ -204,7 +203,7 @@ app.get("/api/invoices/changes", async (req, res) => {
     timings.parseData = Date.now() - stepStart;
     console.log(`📦 Data parsed (${formatDuration(timings.parseData)})`);
 
-    // 5️⃣ Save as BSON files
+    // 5. Save as BSON files
     if (data.length > 0) {
       stepStart = Date.now();
       console.log(`💾 Saving ${data.length} BSON files...`);
@@ -260,7 +259,7 @@ app.get("/api/invoices/changes", async (req, res) => {
         console.log(`📏 Avg file size: ${(avgFileSize / 1024).toFixed(2)} KB`);
       }
 
-      // 6️⃣ Update position (FIXED)
+      // 6. Update position
       if (successCount > 0) {
         stepStart = Date.now();
 
@@ -284,15 +283,15 @@ app.get("/api/invoices/changes", async (req, res) => {
         timings.updateState = Date.now() - stepStart;
 
         console.log(
-          `✅ Position updated: Version ${newVersion}, InvoiceId ${newInvoiceId} (${formatDuration(timings.updateState)})`
+          ` Position updated: Version ${newVersion}, InvoiceId ${newInvoiceId} (${formatDuration(timings.updateState)})`
         );
 
-        // 7️⃣ Performance summary
+        // 7. ️ Performance summary
         const totalTime = Date.now() - requestStartTime;
         timings.total = totalTime;
         
         console.log(`\n${'─'.repeat(70)}`);
-        console.log(`⏱️  PERFORMANCE SUMMARY`);
+        console.log(`  PERFORMANCE SUMMARY`);
         console.log(`${'─'.repeat(70)}`);
         console.log(`  Read State:       ${formatDuration(timings.readState).padStart(10)} (${(timings.readState/totalTime*100).toFixed(1)}%)`);
         console.log(`  Get Version:      ${formatDuration(timings.getVersion).padStart(10)} (${(timings.getVersion/totalTime*100).toFixed(1)}%)`);
@@ -333,8 +332,8 @@ app.get("/api/invoices/changes", async (req, res) => {
       } else {
         // No files were saved successfully
         const totalTime = Date.now() - requestStartTime;
-        console.log(`❌ No files saved successfully`);
-        console.log(`⏱️  Total time: ${formatDuration(totalTime)}\n`);
+        console.log(` No files saved successfully`);
+        console.log(` Total time: ${formatDuration(totalTime)}\n`);
         
         res.json({
           consumer: syncName,
@@ -359,8 +358,8 @@ app.get("/api/invoices/changes", async (req, res) => {
     } else {
       // No changes found
       const totalTime = Date.now() - requestStartTime;
-      console.log(`📭 No changes found`);
-      console.log(`⏱️  Total time: ${formatDuration(totalTime)}\n`);
+      console.log(` No changes found`);
+      console.log(` Total time: ${formatDuration(totalTime)}\n`);
       
       res.json({
         consumer: syncName,
@@ -383,7 +382,7 @@ app.get("/api/invoices/changes", async (req, res) => {
 
   } catch (err) {
     const totalTime = Date.now() - requestStartTime;
-    console.error(`\n❌ ERROR after ${formatDuration(totalTime)}:`, err.message);
+    console.error(`\n ERROR after ${formatDuration(totalTime)}:`, err.message);
     console.error(err.stack);
     
     res.status(500).json({ 

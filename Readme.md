@@ -1,5 +1,13 @@
 # SQL Server-based invoice tracking system ##
 
+# Create the Database
+    
+            CREATE DATABASE InvoiceDB;
+
+# Use the database
+
+            USE InvoiceDB;
+            GO
   
 # Table Design (Invoice Header + Lines)
     
@@ -42,6 +50,7 @@
     WITH (TRACK_COLUMNS_UPDATED = ON);
 
 # This table stores the last version number we processed
+
 CREATE TABLE ChangeTrackingSyncState (
     SyncName                   VARCHAR(100) PRIMARY KEY, 
     LastSyncVersion             BIGINT NOT NULL,          
@@ -50,6 +59,7 @@ CREATE TABLE ChangeTrackingSyncState (
 );
    
 
+# Example Usage:
 # Before making changes, capture your starting point:
     SELECT CHANGE_TRACKING_CURRENT_VERSION() AS current_version;
     
