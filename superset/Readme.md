@@ -1,4 +1,25 @@
-To Add a new Database to Superset:
+## 1️⃣ First-Time Superset Build
+
+Run these commands manually **inside the Superset container** (or your environment) to initialize Superset:
+
+
+# Upgrade Superset metadata database (idempotent)
+superset db upgrade || true
+
+# Create admin user (only if it doesn't already exist)
+superset fab create-admin \
+  --username admin \
+  --firstname Admin \
+  --lastname User \
+  --email admin@example.com \
+  --password admin \
+  || echo "ℹ️ Admin already exists"
+
+# Initialize roles, permissions, and example data (idempotent)
+superset init || true
+
+
+## 2️⃣ Add a new Database to Superset:
 
 1. Go to Settings → Databases
 2. Click "+ Database"
