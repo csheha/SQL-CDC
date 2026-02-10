@@ -18,6 +18,7 @@ echo "Copying Invoice SQL scripts to container..."
 docker cp sqls/setup-invoice-db.sql $SQLSERVER_CONTAINER:/setup-invoice-db.sql
 docker cp sqls/insert-invoices.sql $SQLSERVER_CONTAINER:/insert-invoices.sql
 docker cp sqls/vw_Invoicedetails.sql $SQLSERVER_CONTAINER:/vw_Invoicedetails.sql
+docker cp sqls/sp_GetInvoiceChanges.sql $SQLSERVER_CONTAINER:/sp_GetInvoiceChanges.sql
 
 echo "Running setup-invoice-db.sql..."
 MSYS_NO_PATHCONV=1 docker exec -i "$SQLSERVER_CONTAINER" sh -c "/opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1 -U sa -P \"$SA_PASSWORD\" -C -i /setup-invoice-db.sql"
@@ -27,6 +28,9 @@ MSYS_NO_PATHCONV=1 docker exec -i "$SQLSERVER_CONTAINER" sh -c "/opt/mssql-tools
 
 echo "Running vw_Invoicedetails.sql..."
 MSYS_NO_PATHCONV=1 docker exec -i "$SQLSERVER_CONTAINER" sh -c "/opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1 -U sa -P \"$SA_PASSWORD\" -C -i /vw_Invoicedetails.sql"
+
+echo "Running sp_GetInvoiceChanges.sql..."
+MSYS_NO_PATHCONV=1 docker exec -i "$SQLSERVER_CONTAINER" sh -c "/opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1 -U sa -P \"$SA_PASSWORD\" -C -i /sp_GetInvoiceChanges.sql"
 
 # -------------------------------
 # Step 2: Setup Superset Database

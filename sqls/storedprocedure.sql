@@ -56,3 +56,5 @@ BEGIN
     ORDER BY a.ChangeVersion;
 END;
 GO
+
+PRINT 'Stored procedure created successfully.';

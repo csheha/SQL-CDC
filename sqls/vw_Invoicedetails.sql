@@ -17,3 +17,5 @@ SELECT
     il.LineTotal 
 FROM InvoiceHeader ih 
 JOIN InvoiceLine il ON ih.InvoiceId = il.InvoiceId;
+
+PRINT 'View created successfully.';
