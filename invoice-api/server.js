@@ -118,80 +118,32 @@ app.get("/api/invoices/changes", async (req, res) => {
 
     console.log(`Position: Version ${sinceVersion}, InvoiceId ${lastInvoiceId} (${formatDuration(timings.readState)})`);
 
-    // 2. Get current version
+    // 2. Find changed invoices using stored procedure
     stepStart = Date.now();
-    const versionResult = await pool.request()
-      .query`SELECT CHANGE_TRACKING_CURRENT_VERSION() AS toVersion`;
-    const toVersion = versionResult.recordset[0].toVersion;
-    timings.getVersion = Date.now() - stepStart;
-    
-    console.log(`Current Version: ${toVersion} (${formatDuration(timings.getVersion)})`);
+    console.log(`Querying database via stored procedure...`);
 
-    // 3. Find changed invoices
-    stepStart = Date.now();
-    console.log(`Querying database...`);
-    
     // Use sinceVersion - 1 for CHANGETABLE to include records at sinceVersion
     const changeTableVersion = sinceVersion > 0 ? sinceVersion - 1 : 0;
-    
-    const result = await pool.request()
-      .input("changeTableVersion", sql.BigInt, changeTableVersion)
-      .input("sinceVersion", sql.BigInt, sinceVersion)
-      .input("toVersion", sql.BigInt, toVersion)
-      .input("lastInvoiceId", sql.Int, lastInvoiceId)
-      .input("limit", sql.Int, limit)
-      .query(`
-        WITH ChangedInvoices AS (
-            SELECT DISTINCT h.InvoiceId, CT.SYS_CHANGE_VERSION
-            FROM CHANGETABLE(CHANGES InvoiceHeader, @changeTableVersion) AS CT
-            INNER JOIN InvoiceHeader h ON h.InvoiceId = CT.InvoiceId
-            WHERE CT.SYS_CHANGE_VERSION <= @toVersion
-            
-            UNION
-            
-            SELECT DISTINCT l.InvoiceId, CT.SYS_CHANGE_VERSION
-            FROM CHANGETABLE(CHANGES InvoiceLine, @changeTableVersion) AS CT
-            INNER JOIN InvoiceLine l ON l.LineId = CT.LineId
-            WHERE CT.SYS_CHANGE_VERSION <= @toVersion
-        ),
-        Aggregated AS (
-            SELECT
-                InvoiceId,
-                MAX(SYS_CHANGE_VERSION) AS ChangeVersion
-            FROM ChangedInvoices
-            GROUP BY InvoiceId
-        )
-        SELECT TOP (@limit)
-            a.ChangeVersion,
-            h.InvoiceId,
-            h.InvoiceNumber,
-            h.CustomerCode,
-            h.InvoiceDate,
-            h.TotalAmount,
-            (
-                SELECT
-                    l.LineId,
-                    l.ItemCode,
-                    l.Qty,
-                    l.UnitPrice,
-                    l.LineTotal
-                FROM InvoiceLine l
-                WHERE l.InvoiceId = h.InvoiceId
-                FOR JSON PATH
-            ) AS Lines
-        FROM Aggregated a
-        JOIN InvoiceHeader h ON h.InvoiceId = a.InvoiceId
-        WHERE (a.ChangeVersion > @sinceVersion) 
-           OR (a.ChangeVersion = @sinceVersion AND h.InvoiceId > @lastInvoiceId)
-        ORDER BY a.ChangeVersion, h.InvoiceId
-      `);
-    
-    timings.queryDatabase = Date.now() - stepStart;
-    console.log(`✅ Query completed: Found ${result.recordset.length} invoices (${formatDuration(timings.queryDatabase)})`);
 
-    // 4. Parse JSON data
+    const result = await pool.request()
+      .input("sinceVersion", sql.BigInt, changeTableVersion)
+      .input("limit", sql.Int, limit)
+      .execute('sp_GetInvoiceChanges');
+
+    // Extract toVersion from the first row (stored proc returns it)
+    const toVersion = result.recordset.length > 0 
+      ? result.recordset[0].ToVersion 
+      : await pool.request().query`SELECT CHANGE_TRACKING_CURRENT_VERSION() AS toVersion`.then(r => r.recordset[0].toVersion);
+
+    timings.queryDatabase = Date.now() - stepStart;
+    console.log(`✅ Stored procedure completed: Found ${result.recordset.length} potential invoices (${formatDuration(timings.queryDatabase)})`);
+    console.log(`Current Version: ${toVersion}`);
+
+    // 3. Parse JSON data and filter by position
     stepStart = Date.now();
-    const data = result.recordset.map(r => ({
+
+    // First, parse all data from stored procedure
+    const rawData = result.recordset.map(r => ({
       changeVersion: Number(r.ChangeVersion),
       invoiceId: r.InvoiceId,
       invoiceNumber: r.InvoiceNumber,
@@ -200,10 +152,22 @@ app.get("/api/invoices/changes", async (req, res) => {
       totalAmount: r.TotalAmount,
       lines: r.Lines ? JSON.parse(r.Lines) : []
     }));
-    timings.parseData = Date.now() - stepStart;
-    console.log(`📦 Data parsed (${formatDuration(timings.parseData)})`);
 
-    // 5. Save as BSON files
+    // Then filter out already-processed invoices
+    const data = rawData.filter(invoice => 
+      (invoice.changeVersion > sinceVersion) || 
+      (invoice.changeVersion === sinceVersion && invoice.invoiceId > lastInvoiceId)
+    );
+
+    timings.parseData = Date.now() - stepStart;
+    console.log(`📦 Data parsed and filtered: ${data.length} new invoices from ${rawData.length} total (${formatDuration(timings.parseData)})`);
+
+    // Debug output (optional - you can remove this later)
+    if (data.length > 0) {
+      console.log('📋 Sample invoice:', JSON.stringify(data[0], null, 2));
+    }
+
+    // 4. Save as BSON files
     if (data.length > 0) {
       stepStart = Date.now();
       console.log(`💾 Saving ${data.length} BSON files...`);
@@ -259,7 +223,7 @@ app.get("/api/invoices/changes", async (req, res) => {
         console.log(`📏 Avg file size: ${(avgFileSize / 1024).toFixed(2)} KB`);
       }
 
-      // 6. Update position
+      // 5. Update position
       if (successCount > 0) {
         stepStart = Date.now();
 
@@ -286,7 +250,7 @@ app.get("/api/invoices/changes", async (req, res) => {
           ` Position updated: Version ${newVersion}, InvoiceId ${newInvoiceId} (${formatDuration(timings.updateState)})`
         );
 
-        // 7. ️ Performance summary
+        // 6. ️ Performance summary
         const totalTime = Date.now() - requestStartTime;
         timings.total = totalTime;
         
@@ -294,7 +258,7 @@ app.get("/api/invoices/changes", async (req, res) => {
         console.log(`  PERFORMANCE SUMMARY`);
         console.log(`${'─'.repeat(70)}`);
         console.log(`  Read State:       ${formatDuration(timings.readState).padStart(10)} (${(timings.readState/totalTime*100).toFixed(1)}%)`);
-        console.log(`  Get Version:      ${formatDuration(timings.getVersion).padStart(10)} (${(timings.getVersion/totalTime*100).toFixed(1)}%)`);
+        //console.log(`  Get Version:      ${formatDuration(timings.getVersion).padStart(10)} (${(timings.getVersion/totalTime*100).toFixed(1)}%)`);
         console.log(`  Query Database:   ${formatDuration(timings.queryDatabase).padStart(10)} (${(timings.queryDatabase/totalTime*100).toFixed(1)}%)`);
         console.log(`  Parse Data:       ${formatDuration(timings.parseData).padStart(10)} (${(timings.parseData/totalTime*100).toFixed(1)}%)`);
         console.log(`  Save BSON:        ${formatDuration(timings.saveBSON).padStart(10)} (${(timings.saveBSON/totalTime*100).toFixed(1)}%)`);
@@ -318,7 +282,7 @@ app.get("/api/invoices/changes", async (req, res) => {
           performance: {
             totalTimeMs: totalTime,
             readStateMs: timings.readState,
-            getVersionMs: timings.getVersion,
+           // getVersionMs: timings.getVersion,
             queryDatabaseMs: timings.queryDatabase,
             parseDataMs: timings.parseData,
             saveBSONMs: timings.saveBSON,
@@ -348,7 +312,7 @@ app.get("/api/invoices/changes", async (req, res) => {
           performance: {
             totalTimeMs: totalTime,
             readStateMs: timings.readState,
-            getVersionMs: timings.getVersion,
+           // getVersionMs: timings.getVersion,
             queryDatabaseMs: timings.queryDatabase,
             parseDataMs: timings.parseData,
             saveBSONMs: timings.saveBSON
@@ -374,7 +338,7 @@ app.get("/api/invoices/changes", async (req, res) => {
         performance: {
           totalTimeMs: totalTime,
           readStateMs: timings.readState,
-          getVersionMs: timings.getVersion,
+          //getVersionMs: timings.getVersion,
           queryDatabaseMs: timings.queryDatabase
         }
       });

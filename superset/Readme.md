@@ -18,6 +18,13 @@ superset fab create-admin \
 # Initialize roles, permissions, and example data (idempotent)
 superset init || true
 
+## Then Login to Superset
+
+  http://localhost:8088
+
+  Username: admin
+  Password: admin
+
 
 ## 2️⃣ Add a new Database to Superset:
 
@@ -29,7 +36,8 @@ superset init || true
     - SQLAlchemy URI: 
     mssql+pyodbc://sa:XXXXXXXXXX@sqlserver-web:1433/InvoiceDB?Encrypt=yes&TrustServerCertificate=yes&driver=ODBC+Driver+18+for+SQL+Server
 
-    (Here XXXXXXXXXX is the password for the sa user in SQL Server)
+    (Here XXXXXXXXXX is the password for the sa user in SQL Server )
+    (if password contain @ should be replaced with %40)
 
    - Database name: InvoiceDB
 

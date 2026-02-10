@@ -1,3 +1,6 @@
+USE InvoiceDB;
+GO
+
 -- Create view to join InvoiceHeader and InvoiceLine
 CREATE VIEW dbo.vw_invoice_header_line AS 
 SELECT 
