@@ -40,7 +40,6 @@ RUN . /app/.venv/bin/activate && \
     psycopg2 \
     psycopg2-binary \
     mysqlclient \
-    sqlalchemy-mongobi \
     redis \
     pillow \
     openpyxl \
