@@ -3,17 +3,25 @@ import sql from "mssql";
 import { BSON } from "bson";
 import fs from "fs";
 import path from "path";
+import dotenv from 'dotenv';
+
+dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
 
 // Database connection settings
 const dbConfig = {
-  server: "localhost",  
-  user: "sa",                       
-  password: "StrongPass@123",                    
-  database: "InvoiceDB",               
-  port: 1433,
+  server: process.env.DB_SERVER || "localhost",
+  user: process.env.MSSQL_USER || "sa",
+  password: process.env.MSSQL_SA_PASSWORD || "StrongPass@123",
+  database: process.env.MSSQL_DB || "InvoiceDB",
+  port: parseInt(process.env.DB_PORT) || 1433,
   options: {
-    encrypt: true,                             
+    encrypt: process.env.DB_ENCRYPT === 'true',
     trustServerCertificate: true
+  },
+  pool: {
+    max: 110,
+    min: 10,
+    idleTimeoutMillis: 30000
   }
 };
 
@@ -162,10 +170,6 @@ app.get("/api/invoices/changes", async (req, res) => {
     timings.parseData = Date.now() - stepStart;
     console.log(`📦 Data parsed and filtered: ${data.length} new invoices from ${rawData.length} total (${formatDuration(timings.parseData)})`);
 
-    // Debug output (optional - you can remove this later)
-    if (data.length > 0) {
-      console.log('📋 Sample invoice:', JSON.stringify(data[0], null, 2));
-    }
 
     // 4. Save as BSON files
     if (data.length > 0) {
