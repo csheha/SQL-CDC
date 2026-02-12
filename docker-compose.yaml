@@ -49,6 +49,7 @@ services:
     environment:
       SUPERSET_ENV: production
       SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS}
     volumes:
       - ./superset:/app/superset_home
       - ./superset/superset_config.py:/app/pythonpath/superset_config.py

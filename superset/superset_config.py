@@ -3,7 +3,7 @@ import os
 # ------------------------------
 # Secret Key for Flask sessions
 # ------------------------------
-SECRET_KEY = 'l5TxWwEoeFzMzx0e1lS7RZ2c5rXyDxrAZZBKiYQZRC6zidzzTtKtzH-VTLN0lSG0RjD0i'
+SECRET_KEY = os.environ["SUPERSET_SECRET_KEY"]
 
 # Postgres connection for metadata
 SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://superset:superset@db:5432/superset"
@@ -18,12 +18,17 @@ CACHE_CONFIG = {
 }
 
 # Enable CORS for frontend
+
+# Read origins from environment variable
+cors_origins = os.environ.get("CORS_ORIGINS", "")
+cors_origins_list = [origin.strip() for origin in cors_origins.split(",") if origin]
+
 ENABLE_CORS = True
 CORS_OPTIONS = {
     "supports_credentials": True,
     "allow_headers": ["*"],
     "resources": [r"*"],
-     'origins': ['http://localhost:3000', 'your-production-domain.com'],
+    "origins": cors_origins_list,
 }
 # Disable X-Frame-Options SAMEORIGIN for embedding
 ENABLE_X_FRAME_OPTIONS = False

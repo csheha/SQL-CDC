@@ -7,13 +7,7 @@ Run these commands manually **inside the Superset container** (or your environme
 superset db upgrade || true
 
 # Create admin user (only if it doesn't already exist)
-superset fab create-admin \
-  --username admin \
-  --firstname Admin \
-  --lastname User \
-  --email admin@example.com \
-  --password admin \
-  || echo "ℹ️ Admin already exists"
+superset fab create-admin --username admin --firstname Admin --lastname User --email admin@example.com --password admin || echo "ℹ️ Admin already exists"
 
 # Initialize roles, permissions, and example data (idempotent)
 superset init || true
