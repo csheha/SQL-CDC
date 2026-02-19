@@ -4,6 +4,9 @@ import { BSON } from "bson";
 import fs from "fs";
 import path from "path";
 import dotenv from 'dotenv';
+import cors from 'cors';
+import fetch from 'node-fetch';
+
 
 dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
 
@@ -27,7 +30,61 @@ const dbConfig = {
 
 // Create web server
 const app = express();
-const PORT = 3000;
+app.use(cors());  // Enable CORS for Angular app
+app.use(express.json());  // Parse JSON bodies
+const PORT = parseInt(process.env.API_PORT) || 3000;
+
+// Superset configuration from environment
+const SUPERSET_URL = process.env.SUPERSET_URL || 'http://localhost:8088';
+const SUPERSET_USERNAME = process.env.SUPERSET_USERNAME || 'admin';
+const SUPERSET_PASSWORD = process.env.SUPERSET_PASSWORD || 'admin';
+
+app.post('/api/guest-token', async (req, res) => {
+  try {
+    // 1. Login to Superset
+    const loginRes = await fetch(`${SUPERSET_URL}/api/v1/security/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: SUPERSET_USERNAME,
+        password: SUPERSET_PASSWORD,
+        provider: 'db',
+        refresh: true
+      })
+    });
+    
+    const loginData = await loginRes.json();
+    const accessToken = loginData.access_token;
+    
+    // 2. Get guest token
+    const tokenRes = await fetch(`${SUPERSET_URL}/api/v1/security/guest_token/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({
+        user: {
+          username: 'guest',
+          first_name: 'Guest',
+          last_name: 'User'
+        },
+        resources: [{
+          type: 'dashboard',
+          id: req.body.dashboardId
+        }],
+        rls: []
+      })
+    });
+    
+    const tokenData = await tokenRes.json();
+    res.json({ token: tokenData.token });
+    
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 // Output folder configuration
 const OUTPUT_DIR = "../invoices-output/processed";

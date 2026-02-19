@@ -1,0 +1,16 @@
+<div class="dashboard-wrapper">
+  <div class="header">
+    <h1>📊 Analytics Dashboard</h1>
+    
+    <!-- 🆕 Add customer selector -->
+    <div class="customer-selector">
+      <label>Customer:</label>
+      <select [(ngModel)]="customerCode" (change)="loadDashboard()">
+        <option value="CUST-000001">CUST-000001</option>
+        <option value="CUST-000002">CUST-000002</option>
+        <option value="CUST-000003">CUST-000003</option>
+      </select>
+    </div>
+  </div>
+  <div id="superset-container"></div>
+</div>

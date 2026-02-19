@@ -1,0 +1,31 @@
+/* Minimal reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+app-root {
+  display: block;
+  width: 100%;
+  height: 100vh;
+}
+
+app-dashboard {
+  display: block;
+  width: 100%;
+  height: 100vh;
+}
+
+iframe {
+  border: none;
+  width: 100%;
+  height: 80vh;
+  border-radius: 8px;
+}

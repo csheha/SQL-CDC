@@ -33,7 +33,7 @@ RUN apt-get update && \
     ACCEPT_EULA=Y apt-get install -y msodbcsql18 && \
     rm -rf /var/lib/apt/lists/*
 
-# Python packages (ONLY add pyodbc)
+# Python packages 
 RUN . /app/.venv/bin/activate && \
     uv pip install \
     flask-cors \
@@ -43,7 +43,8 @@ RUN . /app/.venv/bin/activate && \
     redis \
     pillow \
     openpyxl \
-    pyodbc
+    pyodbc \
+    pymssql
 
 # Playwright
 # RUN playwright install-deps && \

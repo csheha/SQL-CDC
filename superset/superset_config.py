@@ -3,13 +3,13 @@ import os
 # ------------------------------
 # Secret Key for Flask sessions
 # ------------------------------
-SECRET_KEY = os.environ["SUPERSET_SECRET_KEY"]
+SECRET_KEY = os.environ.get("SUPERSET_SECRET_KEY")
 
 # Postgres connection for metadata
 SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://superset:superset@db:5432/superset"
 
 # Redis setup
-RESULTS_BACKEND = "redis://superset_redis:6379/0"
+RESULTS_BACKEND = "redis://redis:6379/0"
 CACHE_CONFIG = {
     'CACHE_TYPE': 'RedisCache',
     'CACHE_DEFAULT_TIMEOUT': 300,
@@ -17,42 +17,61 @@ CACHE_CONFIG = {
     'CACHE_REDIS_URL': 'redis://superset_redis:6379/0'
 }
 
-# Enable CORS for frontend
+# ------------------------------
+# CORS Configuration
+# ------------------------------
+# Read origins from environment variable with fallback
+cors_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://localhost:4200")
+cors_origins_list = [origin.strip() for origin in cors_origins.split(",") if origin.strip()]
 
-# Read origins from environment variable
-cors_origins = os.environ.get("CORS_ORIGINS", "")
-cors_origins_list = [origin.strip() for origin in cors_origins.split(",") if origin]
+print(f"🌐 CORS Origins: {cors_origins_list}")  # Debug log
 
 ENABLE_CORS = True
 CORS_OPTIONS = {
     "supports_credentials": True,
     "allow_headers": ["*"],
-    "resources": [r"*"],
+    "resources": ["*"],  # Changed from [r"*"] to ["*"]
     "origins": cors_origins_list,
 }
-# Disable X-Frame-Options SAMEORIGIN for embedding
+
+# ------------------------------
+# Embedding Configuration
+# ------------------------------
+# Disable X-Frame-Options for embedding
 ENABLE_X_FRAME_OPTIONS = False
 
-# Enable embedding
+# Feature flags
 FEATURE_FLAGS = {
     "EMBEDDED_SUPERSET": True,
-    "DASHBOARD_RBAC": True,  # NEW: Enable dashboard-level permissions
-    "ENABLE_TEMPLATE_PROCESSING": True,  # NEW: Enable dynamic filtering
+    "DASHBOARD_RBAC": True,
+    "ENABLE_TEMPLATE_PROCESSING": True,
 }
 
-
-# Disable extra security that blocks embedding
+# Disable Talisman (security headers) for local development
 TALISMAN_ENABLED = False
+WTF_CSRF_ENABLED = False
 
-# Enable dashboard-level security
+# ------------------------------
+# Guest Token Configuration (CRITICAL!)
+# ------------------------------
+GUEST_ROLE_NAME = "Public"
+GUEST_TOKEN_JWT_SECRET = os.environ.get("SUPERSET_SECRET_KEY", "test-secret-change-me")
+GUEST_TOKEN_JWT_ALGO = "HS256"
+GUEST_TOKEN_JWT_EXP_SECONDS = 300
+
+# ------------------------------
+# Session & Security
+# ------------------------------
+# Allow cookies from embedded iframe
+SESSION_COOKIE_HTTPONLY = False
+SESSION_COOKIE_SECURE = False
+SESSION_COOKIE_SAMESITE = None
+
+# ------------------------------
+# Additional Features
+# ------------------------------
 ENABLE_REACT_CRUD_VIEWS = True
-
-# NEW: Enable row-level security and access requests
 ENABLE_ROW_LEVEL_SECURITY = True
 ENABLE_ACCESS_REQUEST = True
-
-# NEW: Additional security features for user-specific dashboards
-PUBLIC_ROLE_LIKE_GAMMA = True  # Allows public role to have gamma-like permissions
-
-# NEW: Set a longer timeout for SQL queries (in seconds)
+PUBLIC_ROLE_LIKE_GAMMA = True
 SQLALCHEMY_QUERY_TIMEOUT = 300
