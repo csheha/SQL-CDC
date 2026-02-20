@@ -95,6 +95,8 @@ This README explains how to import a dashboard, configure the database connectio
 
     Open the target Dashboard.
 
+    Add allowed domain (ex:http://localhost:4200)
+
     Click the Embed button.
 
     Copy the generated embed code.
@@ -112,3 +114,11 @@ This README explains how to import a dashboard, configure the database connectio
 
     frontend/src/environment.ts
     dashboardId: '<your_dashboard_id>'
+
+# 8. Start backend
+  cd invoice-api
+  npm start
+
+# 9. Start frontend
+  cd frontend
+  ng serve
